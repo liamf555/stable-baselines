@@ -25,8 +25,8 @@ class VecNormalize(VecEnvWrapper):
     :param epsilon: (float) To avoid division by zero
     """
 
-    def __init__(self, venv, training=True, norm_obs=True, norm_reward=True,
-                 clip_obs=10., clip_reward=10., gamma=0.99, epsilon=1e-8):
+    def __init__(self, venv, training=True, norm_obs=True, norm_reward=True, 
+    obs_noise=False, clip_obs=10., clip_reward=10., gamma=0.99, epsilon=1e-8):
         VecEnvWrapper.__init__(self, venv)
         self.obs_rms = RunningMeanStd(shape=self.observation_space.shape)
         self.ret_rms = RunningMeanStd(shape=())
@@ -41,6 +41,7 @@ class VecNormalize(VecEnvWrapper):
         self.norm_reward = norm_reward
         self.old_obs = None
         self.old_rews = None
+        self.obs_noise = obs_noise
 
     def __getstate__(self):
         """
@@ -93,6 +94,16 @@ class VecNormalize(VecEnvWrapper):
         self.old_rews = rews
 
         if self.training:
+            # add observation noise based onb 5% of running SD
+            # simialr to approach used by peng et al. sim to real transfer
+            if self.obs_noise:
+                sd = np.sqrt(self.obs_rms.var)
+                sd = sd * 0.05
+                noise = np.random.normal(0, (sd*0.05))
+                print(f"obs: {obs}")
+                obs = obs + noise
+                # print(f"sd: {sd}, noise: {noise}, obs: {obs}")
+  
             self.obs_rms.update(obs)
         obs = self.normalize_obs(obs)
 
